@@ -88,41 +88,65 @@ async function updateWeatherInfo(city){
         return;
     }
     // console.log(weatherData);
-    const {
-        name: country,
-        main: {temp, humidity},
-        weather :[{id, main}],
-        wind: speed
-    }= weatherData
 
-    countryTxt.textContent= country
-    tempTxt.textContent= Math.round(temp)+' °C'
-    conditionTxt.textContent= main
-    humidityValueTxt.textContent= humidity+'%'
-    windValueTxt.textContent= speed+' M/s'
+    //GPT UPDATE TO FOR GEOLOCATION
+    // const {
+    //     name: country,
+    //     main: {temp, humidity},
+    //     weather :[{id, main}],
+    //     wind: speed
+    // }= weatherData
 
-    currentDateTxt.textContent= getCurrentDate(city)
-    weatherSummaryImg.src= `assets/weather/${getWeatherIcon(id)}`
+
+    // countryTxt.textContent= country
+    // tempTxt.textContent= Math.round(temp)+' °C'
+    // conditionTxt.textContent= main
+    // humidityValueTxt.textContent= humidity+'%'
+    // windValueTxt.textContent= speed+' M/s'
+
+    // currentDateTxt.textContent= getCurrentDate(city)
+    // weatherSummaryImg.src= `assets/weather/${getWeatherIcon(id)}`
+
+    
+     // NEW CODE -> 
+    displayWeather(weatherData);
 
     await updateForecastsInfo()
     showDisplaySection(weatherInfoSection);
 }
 
-async function updateForecastsInfo(city) {
-    const forecastsData = await getFetchData('forecast', city)
 
-    const timeTaken = '12:00:00'
-    const todayDate = new Date().toISOString().split('T')[0]
+// GPT FOR GEOLOCATION 
+// async function updateForecastsInfo(city) {
+//     const forecastsData = await getFetchData('forecast', city)
 
-    forecastItemsContainer.innerHTML= ''
-    forecastsData.list.forEach(forecastWeather =>{
-        if(forecastWeather.dt_txt.includes(timeTaken)&&
-           !forecastWeather.dt_txt.includes(todayDate)){
-            updateForecastsItems(forecastWeather)
+//     const timeTaken = '12:00:00'
+//     const todayDate = new Date().toISOString().split('T')[0]
+
+//     forecastItemsContainer.innerHTML= ''
+//     forecastsData.list.forEach(forecastWeather =>{
+//         if(forecastWeather.dt_txt.includes(timeTaken)&&
+//            !forecastWeather.dt_txt.includes(todayDate)){
+//             updateForecastsItems(forecastWeather)
+//         }
+//     })
+//     // console.log(forecastData)
+// }
+
+// NEW CODE-> 
+function updateForecastsInfoFromData(forecastsData) {
+    const timeTaken = '12:00:00';
+    const todayDate = new Date().toISOString().split('T')[0];
+
+    forecastItemsContainer.innerHTML = '';
+    forecastsData.list.forEach(forecastWeather => {
+        if (forecastWeather.dt_txt.includes(timeTaken) &&
+            !forecastWeather.dt_txt.includes(todayDate)) {
+            updateForecastsItems(forecastWeather);
         }
-    })
-    // console.log(forecastData)
+    });
 }
+
 
 function updateForecastsItems(weatherData){
     console.log(weatherData)
@@ -132,7 +156,10 @@ function updateForecastsItems(weatherData){
         main: {temp}
     }= weatherData
 
-    const dateTaken = new Date()
+    // gpt for geolocation
+    // const dateTaken = new Date()
+    const dateTaken = new Date(weatherData.dt_txt)
+
     const dateOption ={
         day: '2-digit',
         month: 'short'
@@ -156,3 +183,64 @@ function showDisplaySection(section){
 
     section.style.display= 'flex';
 }
+
+
+//GPT GEOLOCATION
+window.addEventListener('load', () => {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+    } else {
+        console.log("Geolocation not supported.");
+    }
+});
+
+async function successCallback(position) {
+    const { latitude, longitude } = position.coords;
+    const weatherData = await getFetchDataByCoords('weather', latitude, longitude);
+    const forecastData = await getFetchDataByCoords('forecast', latitude, longitude);
+
+    if (weatherData.cod !== 200) {
+        showDisplaySection(notFoundSection);
+        return;
+    }
+
+    displayWeather(weatherData);
+    updateForecastsInfoFromData(forecastData);
+    showDisplaySection(weatherInfoSection);
+}
+
+function errorCallback(error) {
+    console.warn(`Geolocation error: ${error.message}`);
+    showDisplaySection(searchCitySelector);
+}
+
+
+//Add this new helper function:
+async function getFetchDataByCoords(endPoint, lat, lon) {
+    const apiUrl = `https://api.openweathermap.org/data/2.5/${endPoint}?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+    const response = await fetch(apiUrl);
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    return response.json();
+}
+
+
+//Extract weather display logic into a new reusable function:
+// Find this part in updateWeatherInfo:
+function displayWeather(weatherData) {
+    const {
+        name: country,
+        main: { temp, humidity },
+        weather: [{ id, main }],
+        wind: { speed }
+    } = weatherData;
+
+    countryTxt.textContent = country;
+    tempTxt.textContent = Math.round(temp) + ' °C';
+    conditionTxt.textContent = main;
+    humidityValueTxt.textContent = humidity + '%';
+    windValueTxt.textContent = speed + ' M/s';
+    currentDateTxt.textContent = getCurrentDate();
+    weatherSummaryImg.src = `assets/weather/${getWeatherIcon(id)}`;
+}
+
+
